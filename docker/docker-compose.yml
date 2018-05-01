@@ -1,0 +1,6 @@
+version: '3'
+services:
+  fdb:
+    build: .
+    ports:
+     - "4500:4500"

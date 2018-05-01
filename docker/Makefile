@@ -1,4 +1,4 @@
-IMAGE:=foundationdb
+IMAGE:=rdsubhas/foundationdb
 
 build:
 	docker build -t $(IMAGE) .
