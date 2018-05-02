@@ -1,15 +1,19 @@
-#!/usr/bin/env sh
+#!/bin/bash
 set -xe
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get -qq -y update
 apt-get -qq -y install --no-install-recommends --no-install-suggests \
-  curl ca-certificates python
+  curl ca-certificates python dnsutils
 
-# dumb-init
+# tini init
 tini_version="v0.17.0"
-curl -fsSL "https://github.com/krallin/tini/releases/download/${tini_version}/tini" > /tini
-chmod +x /tini
+curl -fsSL "https://github.com/krallin/tini/releases/download/${tini_version}/tini" > /usr/bin/tini
+chmod +x /usr/bin/tini
+
+# gosu
+curl -fsSL https://github.com/tianon/gosu/releases/download/1.9/gosu-amd64 > /usr/bin/gosu
+chmod +x /usr/bin/gosu
 
 # install
 fdb_version="5.1.5"
@@ -23,5 +27,4 @@ sleep 5
 rm -Rf /var/lib/foundationdb /var/log/foundationdb /etc/foundationdb
 
 # cleanup
-apt-get -qq -y --force-yes --purge remove curl
-rm -Rf *.deb /var/lib/apt/lists/* /var/cache/apt/*
+rm -Rf *.deb /var/lib/apt/lists /var/cache/apt /prepare.sh

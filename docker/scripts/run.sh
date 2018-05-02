@@ -1,35 +1,27 @@
-#!/usr/bin/env sh
-set -xe
+#!/bin/bash
+set -e
 
-mkdir -p /var/log/foundationdb /etc/foundationdb /var/lib/foundationdb/data
+cd $FDB_HOME
+mkdir -p data logs
 
-if [ ! -f /etc/foundationdb/fdb.cluster ]; then
-  if [ -f /var/lib/foundationdb/fdb.cluster ]; then
-    echo "Using /var/lib/foundationdb/fdb.cluster..."
-    cp /var/lib/foundationdb/fdb.cluster /etc/foundationdb/
-  else
-    echo "Creating test /etc/foundationdb/fdb.cluster..."
-    description=`LC_CTYPE=C tr -dc A-Za-z0-9 < /dev/urandom | head -c 8`
-    random_str=`LC_CTYPE=C tr -dc A-Za-z0-9 < /dev/urandom | head -c 8`
-    echo $description:$random_str@127.0.0.1:4500 > /etc/foundationdb/fdb.cluster
-    chown foundationdb:foundationdb /etc/foundationdb/fdb.cluster
-    chmod 0664 /etc/foundationdb/fdb.cluster
-  fi
-fi
-
-if [ ! -f /etc/foundationdb/foundationdb.conf ]; then
-  if [ -f /var/lib/foundationdb/foundationdb.conf ]; then
-    echo "Using /var/lib/foundationdb/foundationdb.conf..."
-    cp /var/lib/foundationdb/foundationdb.conf /etc/foundationdb/
-  else
-    echo "Using /opt/foundationdb/conf/foundationdb.conf..."
-    cp /opt/foundationdb/conf/foundationdb.conf /etc/foundationdb/
-  fi
-fi
+echo "Generating fdb.cluster..."
+fdb_ips=$( (dig +short $FDB_COORDINATORS || echo $FDB_COORDINATORS) | head -n1)
+fdb_ips=$(echo $fdb_ips | sed -e 's/$/:4500/g' | tr '\n' ',')
+fdb_ips=${fdb_ips%,}
+echo $FDB_DESC:$FDB_ID@$fdb_ips > fdb.cluster
+cat fdb.cluster
 
 usermod -u 2005 foundationdb
 groupmod -g 2005 foundationdb
-chown -R foundationdb:foundationdb /var/lib/foundationdb /var/log/foundationdb /etc/foundationdb
-chmod -R 0700 /var/lib/foundationdb/data /var/log/foundationdb
+chown -R foundationdb:foundationdb .
+chmod -R 0700 $FDB_HOME
+chmod 0644 fdb.cluster
 
-/usr/lib/foundationdb/fdbmonitor --conffile /etc/foundationdb/foundationdb.conf
+echo "Starting foundationdb..."
+gosu foundationdb:foundationdb /usr/sbin/fdbserver \
+  --cluster_file $FDB_HOME/fdb.cluster \
+  --datadir $FDB_HOME/data \
+  --logdir $FDB_HOME/logs \
+  --machine_id $(hostname) \
+  --listen_address public \
+  --public_address auto:4500
